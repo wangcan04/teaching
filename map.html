@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <title>Waypoints in directions</title>
+    <style>
+      #right-panel {
+        font-family: 'Roboto','sans-serif';
+        line-height: 30px;
+        padding-left: 10px;
+      }
+
+      #right-panel select, #right-panel input {
+        font-size: 15px;
+      }
+
+      #right-panel select {
+        width: 100%;
+      }
+
+      #right-panel i {
+        font-size: 12px;
+      }
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        height: 100%;
+        float: left;
+        width: 70%;
+        height: 100%;
+      }
+      #right-panel {
+        margin: 20px;
+        border-width: 2px;
+        width: 20%;
+        height: 400px;
+        float: left;
+        text-align: left;
+        padding-top: 0;
+      }
+      #directions-panel {
+        margin-top: 10px;
+        background-color: #F8F8FF;
+        padding: 10px;
+        overflow: scroll;
+        height: 174px;
+      }
+      #distance-panel {
+        margin-top: 10px;
+        background-color: #B0C4DE;
+        padding: 10px;
+        overflow: scroll;
+        height: 20px;
+      }
+
+
+      }
+      #floating-panel {
+        position: absolute;
+        top: 10px;
+        left: 25%;
+        z-index: 5;
+        background-color: #fff;
+        padding: 5px;
+        border: 1px solid #999;
+        text-align: center;
+        font-family: 'Roboto','sans-serif';
+        line-height: 30px;
+        padding-left: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="floating-panel">
+    </div>
+    <input type="file" name="upload" id="upload" accept="text/plain"/>
+    <textarea name="content" id="content"></textarea>
+    <div id="map"></div>
+    <div id="distance-panel"></div>
+    <div id="directions-panel"></div>
+    <script>
+    function initMap() {
+      var directionsService = new google.maps.DirectionsService;
+      var directionsDisplay = new google.maps.DirectionsRenderer;
+      var map = new google.maps.Map(document.getElementById('map'), {
+        zoom: 8,
+        center: {lat: 52.22, lng: 4.50}
+      });
+      directionsDisplay.setMap(map);
+
+      /**
+       *
+       * @param fileInput DOM
+       * @param callback callback function
+       */
+      function getFileContent (fileInput, callback) {
+          if (fileInput.files && fileInput.files.length > 0 && fileInput.files[0].size > 0) {
+              //var file =$("#upload").prop('files')[0] in J JQuery;
+              var file = fileInput.files[0];
+              if (window.FileReader) {
+                  var reader = new FileReader();
+                  reader.onloadend = function (evt) {
+                      if (evt.target.readyState == FileReader.DONE) {
+                          callback(evt.target.result);
+                      }
+                  };
+                  reader.readAsText(file, 'gbk');
+              }
+          }
+      };
+
+      /**
+       * upload new content
+       */
+      document.getElementById('upload').onchange = function () {
+          var content = document.getElementById('content');
+          getFileContent(this, function (str) {
+              content.value = str;
+              var strs= new Array()
+              strs=str.split("\n");
+
+              var locations = [];
+              for (var i = 0; i < strs.length; i++) {
+                if (strs[i].length > 0) {
+                  locations.push(strs[i]);
+                }
+              }
+              console.log(locations);
+              calculateAndDisplayRoute(locations);
+          });
+      };
+
+      function calculateAndDisplayRoute(locations) {
+        var user_origin, user_destination, user_waypoints;
+        if (typeof locations == 'undefined' || locations.length < 2) {
+          user_origin = 'Amsterdam';
+          user_destination = 'den haag';
+          user_waypoints = [{location: 'assen'}, {location: 'rotterdam'}];
+        } else {
+          user_origin = locations[0];
+          user_destination = locations[locations.length - 1];
+          user_waypoints = locations.slice(1, -1).map(x => ({location: x}));
+        }
+
+        directionsService.route({
+          origin: user_origin,  // Haight.
+          destination: user_destination,  // Ocean Beach.
+          waypoints: user_waypoints,
+          // Note that Javascript allows us to access the constant
+          // using square brackets and a string value as its
+          // "property."
+          travelMode: 'BICYCLING'
+        }, function(response, status) {
+          if (status == 'OK') {
+            directionsDisplay.setDirections(response);
+            var route = response.routes[0];
+            var summaryPanel = document.getElementById('directions-panel');
+            var totalDistance= document.getElementById('distance-panel');
+            var routeDistance = 0
+            summaryPanel.innerHTML = '';
+            totalDistance.innerHTML= '';
+            // For each route, display summary information.
+            for (var i = 0; i < route.legs.length; i++) {
+              var routeSegment = i + 1;
+              summaryPanel.innerHTML += '<b>Route Segment: ' + routeSegment +
+                  '</b><br>';
+              summaryPanel.innerHTML += route.legs[i].start_address + ' to ';
+              summaryPanel.innerHTML += route.legs[i].end_address + '<br>';
+              summaryPanel.innerHTML += route.legs[i].distance.text + '<br><br>';
+              summaryPanel.innerHTML += route.legs[i].duration.text + '<br><br>';
+              routeDistance += route.legs[i].distance.value;
+              }
+              totalDistance.innerHTML +=  '<b>Total Distance ' + routeDistance/1000 + 'km'
+                  '<br><br>';
+
+
+          } else {
+            window.alert('Directions request failed due to ' + status);
+          }
+        });
+      }
+
+      calculateAndDisplayRoute([]);
+    }
+    </script>
+    <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=API_KEY&callback=initMap">
+    </script>
+  </body>
+</html>
